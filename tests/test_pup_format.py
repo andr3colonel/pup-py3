@@ -17,15 +17,18 @@ pup_header_encoded = (
     0x0,  # hash size
     0x100,  # file size
     0x0,  # padding
-    0x0,  # number of blobs
+    0x1,  # number of entries
     0x0,  # flags2
     0x0,  # padding
 )
 
 pup_header = struct.pack("<IBBBBBBHHHIIHHI", *pup_header_encoded)
-pup_content = b"\x00" * 0xE0
+pup_entries = struct.pack(
+    "<QQQQ", 0xA5A5A5A5, 0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC
+)
+pup_content = b"\x00" * 0xC0
 
-pup_data = pup_header + pup_content
+pup_data = pup_header + pup_entries + pup_content
 
 
 def test_file_not_exists():
@@ -68,3 +71,13 @@ def test_header_size_valid():
     pup.parse(pup_data)
     assert pup.header.header_size == 0x100
     assert pup.header.file_size == 0x100
+
+
+def test_number_of_entries():
+    pup = PUP()
+    pup.parse(pup_data)
+    assert len(pup.entries) == 1
+    assert pup.entries[0].flags == 0xA5A5A5A5
+    assert pup.entries[0].offset == 0xAAAAAAAA
+    assert pup.entries[0].file_size == 0xBBBBBBBB
+    assert pup.entries[0].memory_size == 0xCCCCCCCC

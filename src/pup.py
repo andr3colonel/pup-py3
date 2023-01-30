@@ -2,8 +2,74 @@ import io
 import os.path
 import struct
 from enum import Enum
+from typing import List
 
 import attr
+
+files = {
+    3: "wlan_firmware.bin",
+    5: "secure_modules.bin",
+    6: "system_fs_image.img",
+    8: "eap_fs_image.img",
+    9: "recovery_fs_image.img",
+    11: "preinst_fs_image.img",
+    12: "system_ex_fs_image.img",
+    34: "torus2_firmware.bin",
+    257: "eula.xml",
+    512: "orbis_swu.self",
+    514: "orbis_swu.self",
+    3337: "cp_firmware.bin",
+}
+
+devices = {
+    1: "/dev/sflash0s0x32b",
+    13: "/dev/sflash0s0x32b",
+    32: "/dev/sflash0s0x32b",
+    36: "/dev/sflash0s0x32b",
+    40: "/dev/sflash0s0x32b",
+    42: "/dev/sflash0s0x32b",
+    44: "/dev/sflash0s0x32b",
+    46: "/dev/sflash0s0x32b",
+    2: "/dev/sflash0s0x33",
+    14: "/dev/sflash0s0x33",
+    33: "/dev/sflash0s0x33",
+    37: "/dev/sflash0s0x33",
+    43: "/dev/sflash0s0x33",
+    3: "/dev/sflash0s0x38",
+    34: "/dev/sflash0s0x38",
+    48: "/dev/sflash0s0x38",
+    4: "/dev/sflash0s1.cryptx2b",
+    35: "/dev/sflash0s1.cryptx2b",
+    38: "/dev/sflash0s1.cryptx2b",
+    39: "/dev/sflash0s1.cryptx2b",
+    45: "/dev/sflash0s1.cryptx2b",
+    5: "/dev/sflash0s1.cryptx3b",
+    10: "/dev/sflash0s1.cryptx40",
+    9: "/dev/da0x0.crypt",
+    11: "/dev/da0x1.crypt",
+    7: "/dev/da0x2",
+    8: "/dev/da0x3.crypt",
+    6: "/dev/da0x4b.crypt",
+    12: "/dev/da0x5b.crypt",
+    3328: "/dev/sc_fw_update0",
+    3336: "/dev/sc_fw_update0",
+    3335: "/dev/sc_fw_update0",
+    3329: "/dev/cd0",
+    3330: "/dev/da0",
+    16: "/dev/sbram0",
+    17: "/dev/sbram0",
+    18: "/dev/sbram0",
+    19: "/dev/sbram0",
+    20: "/dev/sbram0",
+    21: "/dev/sbram0",
+    22: "/dev/sbram0",
+    3337: "cpfirm",
+    15: "test",
+    769: "/update",
+    770: "/update",
+    782: "test",
+    783: "test",
+}
 
 
 class PUPErrorType(Enum):
@@ -23,39 +89,49 @@ class PUPParsingException(Exception):
         return f"{self.error_type}: {self.message}"
 
 
-@attr.s
+@attr.define
 class PUPHeader:  # pylint: disable=too-many-instance-attributes
-    magic: int = attr.ib()
-    version: int = attr.ib()
-    mode: int = attr.ib()
-    endianness: int = attr.ib()
-    flags: int = attr.ib()
-    content_type: int = attr.ib()
-    product_type: int = attr.ib()
-    paddint: int = attr.ib()
-    header_size: int = attr.ib()
-    hash_size: int = attr.ib()
-    file_size: int = attr.ib()
-    paddint2: int = attr.ib()
-    blobs_count: int = attr.ib()
-    flags2: int = attr.ib()
-    unk1C: int = attr.ib()
+    magic: int
+    version: int
+    mode: int
+    endianness: int
+    flags: int
+    content_type: int
+    product_type: int
+    padding: int
+    header_size: int
+    hash_size: int
+    file_size: int
+    padding2: int
+    entries_count: int
+    flags2: int
+    unk1C: int
 
-    def __str__(self):
-        return f"""Magic: {hex(self.magic)}
+
+@attr.define
+class PUPEntry:  # pylint: disable=too-many-instance-attributes
+    flags: int
+    offset: int
+    file_size: int
+    memory_size: int
+
+
+def __str__(self):
+    return f"""Magic: {hex(self.magic)}
 Flags: {hex(self.flags)}
 HeaderSize: {self.header_size}
 HashSize: {self.hash_size}
 fileSize: {self.file_size}
-entryCount: {self.blobs_count}
+entryCount: {self.entries_count}
 """
 
 
-@attr.s
+@attr.define
 class PUP:
     """Represents PlayStation update patch file."""
 
-    header: PUPHeader = attr.ib(init=False)
+    header: PUPHeader = attr.field(init=False)
+    entries: List[PUPEntry] = attr.field(init=False, factory=list)
 
     @staticmethod
     def from_file(file_name: str):
@@ -89,6 +165,10 @@ class PUP:
                 f"Invalid file size: {len(data)}",
                 PUPErrorType.INVALID_FILE_SIZE,
             )
+
+        for _ in range(self.header.entries_count):
+            entry_data = stream.read(32)
+            self.entries.append(PUPEntry(*struct.unpack("<QQQQ", entry_data)))
 
     def __str__(self):
         return str(self.header)
