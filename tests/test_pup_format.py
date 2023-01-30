@@ -24,7 +24,7 @@ pup_header_encoded = (
 
 pup_header = struct.pack("<IBBBBBBHHHIIHHI", *pup_header_encoded)
 pup_entries = struct.pack(
-    "<QQQQ", 0xA5A5A5A5, 0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC
+    "<QQQQ", 0x10106C0E, 0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC
 )
 pup_content = b"\x00" * 0xC0
 
@@ -77,7 +77,9 @@ def test_number_of_entries():
     pup = PUP()
     pup.parse(pup_data)
     assert len(pup.entries) == 1
-    assert pup.entries[0].flags == 0xA5A5A5A5
+    assert pup.entries[0].compressed is True
+    assert pup.entries[0].blocked is True
+    assert pup.entries[0].file_name == "eula.xml"
     assert pup.entries[0].offset == 0xAAAAAAAA
     assert pup.entries[0].file_size == 0xBBBBBBBB
     assert pup.entries[0].memory_size == 0xCCCCCCCC
