@@ -3,7 +3,7 @@ PWD = $(shell pwd)
 SRC = src tests
 
 pylint:
-	pylint config/.pylintrc $(SRC)
+	pylint $(SRC)
 
 mypy:
 	mypy --version
