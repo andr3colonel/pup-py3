@@ -2,16 +2,60 @@ import struct
 
 import pytest
 
-from src.pup import PUP, PUPErrorType, PUPParsingException
+from src.pup import (
+    PUP,
+    Endianness,
+    PUPContentType,
+    PUPErrorType,
+    PUPParsingException,
+    PUPProductType,
+)
+
+pup_header_encoded_invalid_type = (
+    0x1D3D154F,  # magic
+    0,  # version
+    0x1,  # mode
+    0x5,  # endianness
+    0x12,  # flags
+    0x50,  # content type
+    0x50,  # product type
+    0x0,  # padding
+    0x100,  # header size,
+    0x0,  # hash size
+    0x100,  # file size
+    0x0,  # padding
+    0x1,  # number of entries
+    0x0,  # flags2
+    0x0,  # padding
+)
+
+
+pup_header_encoded_invalid_magic = (
+    0xDEADBEEF,  # magic
+    0,  # version
+    0x1,  # mode
+    0x5,  # endianness
+    0x12,  # flags
+    0x50,  # content type
+    0x50,  # product type
+    0x0,  # padding
+    0x100,  # header size,
+    0x0,  # hash size
+    0x100,  # file size
+    0x0,  # padding
+    0x1,  # number of entries
+    0x0,  # flags2
+    0x0,  # padding
+)
 
 pup_header_encoded = (
     0x1D3D154F,  # magic
     0,  # version
     0x1,  # mode
-    0x1,  # endianness
+    0x2,  # endianness
     0x12,  # flags
     0x4,  # content type
-    0x0,  # product type
+    0x9,  # product type
     0x0,  # padding
     0x100,  # header size,
     0x0,  # hash size
@@ -23,6 +67,12 @@ pup_header_encoded = (
 )
 
 pup_header = struct.pack("<IBBBBBBHHHIIHHI", *pup_header_encoded)
+pup_header_invalid_magic = struct.pack(
+    "<IBBBBBBHHHIIHHI", *pup_header_encoded_invalid_magic
+)
+pup_header_invalid_type = struct.pack(
+    "<IBBBBBBHHHIIHHI", *pup_header_encoded_invalid_type
+)
 pup_entries = struct.pack(
     "<QQQQ", 0x10106C0E, 0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC
 )
@@ -45,18 +95,13 @@ def test_empty_file():
 
 def test_magic_invalid():
     with pytest.raises(PUPParsingException) as e_info:
-        PUP().parse(
-            b"\x15\x4f\x1d\x3d\x01\x00\x12\x00"
-            b"\x01\x00\x04\x00\x00\x05\xa0\x00"
-            b"\x01\x01\x01\x01\x01\x01\x01\x00"
-            b"\x01\x01\x01\x01\x01\x01\x01\x00"
-        )
+        PUP().parse(pup_header_invalid_magic)
         assert e_info.error_type == PUPErrorType.INVALID_MAGIC
 
 
 def test_magic_valid():
     pup = PUP()
-    pup.parse(pup_data)
+    pup.parse_header(pup_header)
     assert pup.header.magic == 0x1D3D154F
 
 
@@ -68,9 +113,25 @@ def test_header_size_invalid():
 
 def test_header_size_valid():
     pup = PUP()
-    pup.parse(pup_data)
+    pup.parse_header(pup_header)
     assert pup.header.header_size == 0x100
     assert pup.header.file_size == 0x100
+
+
+def test_header_flags():
+    pup = PUP()
+    pup.parse_header(pup_header)
+    assert pup.header.product_type == PUPProductType.PRX
+    assert pup.header.content_type == PUPContentType.PUP
+    assert pup.header.endianness == Endianness.BIG
+
+
+def test_header_flags_unknown():
+    pup = PUP()
+    pup.parse_header(pup_header_invalid_type)
+    assert pup.header.product_type == PUPProductType.UNKNOWN
+    assert pup.header.content_type == PUPContentType.UNKNOWN
+    assert pup.header.endianness == Endianness.UNKNOWN
 
 
 def test_number_of_entries():

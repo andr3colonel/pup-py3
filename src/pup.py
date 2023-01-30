@@ -72,12 +72,46 @@ devices = {
 }
 
 
+class Endianness(Enum):
+    UNKNOWN = 0
+    LITTLE = 1
+    BIG = 2
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.UNKNOWN
+
+
 class PUPErrorType(Enum):
     FILE_NOT_FOUND = 0
     INVALID_HEADER_SIZE = 1
     INVALID_MAGIC = 2
     UNKNOWN_ERROR = 3
     INVALID_FILE_SIZE = 4
+
+
+class PUPContentType(Enum):
+    ELF = 1
+    PUP = 4
+    UNKNOWN = 0x10
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.UNKNOWN
+
+
+class PUPProductType(Enum):
+    PUP = 0
+    ELF = 8
+    PRX = 9
+    K = 0xC
+    SM = 0xE
+    SL = 0xF
+    UNKNOWN = 0x10
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.UNKNOWN
 
 
 class PUPParsingException(Exception):
@@ -94,10 +128,10 @@ class PUPHeader:  # pylint: disable=too-many-instance-attributes
     magic: int
     version: int
     mode: int
-    endianness: int
+    endian: int
     flags: int
-    content_type: int
-    product_type: int
+    content: int
+    product: int
     padding: int
     header_size: int
     hash_size: int
@@ -106,6 +140,18 @@ class PUPHeader:  # pylint: disable=too-many-instance-attributes
     entries_count: int
     flags2: int
     unk1C: int
+
+    @property
+    def endianness(self) -> Endianness:
+        return Endianness(self.endian)
+
+    @property
+    def content_type(self) -> PUPContentType:
+        return PUPContentType(self.content)
+
+    @property
+    def product_type(self) -> PUPProductType:
+        return PUPProductType(self.product)
 
 
 @attr.define
