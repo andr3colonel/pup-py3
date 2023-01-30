@@ -1,4 +1,5 @@
 import io
+import os.path
 import struct
 from enum import Enum
 
@@ -6,6 +7,7 @@ import attr
 
 
 class PUPErrorType(Enum):
+    FILE_NOT_FOUND = 0
     INVALID_HEADER_SIZE = 1
     INVALID_MAGIC = 2
     UNKNOWN_ERROR = 3
@@ -43,6 +45,10 @@ class PUP:
 
     @staticmethod
     def from_file(file_name: str):
+        if not os.path.exists(file_name):
+            raise PUPParsingException(
+                f"{file_name} not exists", PUPErrorType.FILE_NOT_FOUND
+            )
         with open(file_name, "rb") as f:
             return PUP().parse(f.read())
 

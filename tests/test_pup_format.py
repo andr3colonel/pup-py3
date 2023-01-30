@@ -3,6 +3,12 @@ import pytest
 from src.pup import PUP, PUPErrorType, PUPParsingException
 
 
+def test_file_not_exists():
+    with pytest.raises(PUPParsingException) as e_info:
+        PUP.from_file("/NONEXISTANTFILE")
+        assert e_info.error_type == PUPErrorType.FILE_NOT_FOUND
+
+
 def test_empty_file():
     with pytest.raises(PUPParsingException) as e_info:
         PUP().parse(b"")
