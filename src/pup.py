@@ -11,6 +11,7 @@ class PUPErrorType(Enum):
     INVALID_HEADER_SIZE = 1
     INVALID_MAGIC = 2
     UNKNOWN_ERROR = 3
+    INVALID_FILE_SIZE = 4
 
 
 class PUPParsingException(Exception):
@@ -25,16 +26,30 @@ class PUPParsingException(Exception):
 @attr.s
 class PUPHeader:  # pylint: disable=too-many-instance-attributes
     magic: int = attr.ib()
-    unk04: int = attr.ib()
-    unk08: int = attr.ib()
+    version: int = attr.ib()
+    mode: int = attr.ib()
+    endianness: int = attr.ib()
     flags: int = attr.ib()
-    unk0B: int = attr.ib()
-    headerSize: int = attr.ib()
-    hashSize: int = attr.ib()
-    fileSize: int = attr.ib()
-    entryCount: int = attr.ib()
-    hashCount: int = attr.ib()
+    content_type: int = attr.ib()
+    product_type: int = attr.ib()
+    paddint: int = attr.ib()
+    header_size: int = attr.ib()
+    hash_size: int = attr.ib()
+    file_size: int = attr.ib()
+    paddint2: int = attr.ib()
+    blobs_count: int = attr.ib()
+    flags2: int = attr.ib()
     unk1C: int = attr.ib()
+
+    def __str__(self):
+        return f"""Magic: {hex(self.magic)}
+Flags: {hex(self.flags)}
+HeaderSize: {self.headerSize}
+HashSize: {self.hashSize}
+fileSize: {self.fileSize}
+entryCount: {self.entryCount}
+hashCount: {self.hashCount}
+"""
 
 
 @attr.s
@@ -60,9 +75,17 @@ class PUP:
                 f"Data is too small to be a valid header {len(header_data)}",
                 PUPErrorType.INVALID_HEADER_SIZE,
             )
-        self.header = PUPHeader(*struct.unpack("<IIHBBHHQHHI", data))
+        self.header = PUPHeader(*struct.unpack("<IBBBBBBHHHIIHHI", header_data))
         if self.header.magic != 0x1D3D154F:
             raise PUPParsingException(
                 f"Invalid Magic value: {hex(self.header.magic)}",
                 PUPErrorType.INVALID_MAGIC,
             )
+        if self.header.header_size > len(data) or self.header.file_size > len(data):
+            raise PUPParsingException(
+                f"Invalid file size: {len(data)}",
+                PUPErrorType.INVALID_FILE_SIZE,
+            )
+
+    def __str__(self):
+        return str(self.header)
