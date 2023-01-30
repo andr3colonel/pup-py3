@@ -115,6 +115,18 @@ class PUPEntry:  # pylint: disable=too-many-instance-attributes
     file_size: int
     memory_size: int
 
+    @property
+    def file_name(self) -> str:
+        return files.get(self.flags >> 20, "Unknown")
+
+    @property
+    def compressed(self) -> bool:
+        return self.flags & 0x8 != 0
+
+    @property
+    def blocked(self) -> bool:
+        return self.flags & 0x800 != 0
+
 
 def __str__(self):
     return f"""Magic: {hex(self.magic)}
