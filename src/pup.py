@@ -126,6 +126,10 @@ entryCount: {self.entries_count}
 """
 
 
+PUP_HEADER_FORMAT = "<IBBBBBBHHHIIHHI"
+PUP_ENTRY_FORMAT = "<QQQQ"
+
+
 @attr.define
 class PUP:
     """Represents PlayStation update patch file."""
@@ -144,15 +148,15 @@ class PUP:
 
     def parse(self, data: bytes):
         stream = io.BytesIO(data)
-        header_data = stream.read(32)
-        if len(header_data) < 32:
+        struct_format = PUP_HEADER_FORMAT
+        header_size = struct.calcsize(struct_format)
+        header_data = stream.read(header_size)
+        if len(header_data) < header_size:
             raise PUPParsingException(
                 f"Data is too small to be a valid header {len(header_data)}",
                 PUPErrorType.INVALID_HEADER_SIZE,
             )
-        self.header = PUPHeader(
-            *struct.unpack("<IBBBBBBHHHIIHHI", header_data)
-        )
+        self.header = PUPHeader(*struct.unpack(struct_format, header_data))
         if self.header.magic != 0x1D3D154F:
             raise PUPParsingException(
                 f"Invalid Magic value: {hex(self.header.magic)}",
@@ -167,8 +171,10 @@ class PUP:
             )
 
         for _ in range(self.header.entries_count):
-            entry_data = stream.read(32)
-            self.entries.append(PUPEntry(*struct.unpack("<QQQQ", entry_data)))
+            entry_data = stream.read(struct.calcsize(PUP_ENTRY_FORMAT))
+            self.entries.append(
+                PUPEntry(*struct.unpack(PUP_ENTRY_FORMAT, entry_data))
+            )
 
     def __str__(self):
         return str(self.header)
