@@ -158,22 +158,32 @@ class PUP:
         with open(file_name, "rb") as f:
             return PUP().parse(f.read())
 
+    def parse_header(self, header_data):
+        self.header = PUPHeader(*struct.unpack(PUP_HEADER_FORMAT, header_data))
+        if self.header.magic != 0x1D3D154F:
+            raise PUPParsingException(
+                f"Invalid Magic value: {hex(self.header.magic)}",
+                PUPErrorType.INVALID_MAGIC,
+            )
+
+    def read_entries(self, stream: io.BytesIO):
+        for _ in range(self.header.entries_count):
+            entry_data = stream.read(struct.calcsize(PUP_ENTRY_FORMAT))
+            self.entries.append(
+                PUPEntry(*struct.unpack(PUP_ENTRY_FORMAT, entry_data))
+            )
+
     def parse(self, data: bytes):
         stream = io.BytesIO(data)
-        struct_format = PUP_HEADER_FORMAT
-        header_size = struct.calcsize(struct_format)
+        header_size = struct.calcsize(PUP_HEADER_FORMAT)
         header_data = stream.read(header_size)
         if len(header_data) < header_size:
             raise PUPParsingException(
                 f"Data is too small to be a valid header {len(header_data)}",
                 PUPErrorType.INVALID_HEADER_SIZE,
             )
-        self.header = PUPHeader(*struct.unpack(struct_format, header_data))
-        if self.header.magic != 0x1D3D154F:
-            raise PUPParsingException(
-                f"Invalid Magic value: {hex(self.header.magic)}",
-                PUPErrorType.INVALID_MAGIC,
-            )
+
+        self.parse_header(header_data)
         if self.header.header_size > len(data) or self.header.file_size > len(
             data
         ):
@@ -182,11 +192,7 @@ class PUP:
                 PUPErrorType.INVALID_FILE_SIZE,
             )
 
-        for _ in range(self.header.entries_count):
-            entry_data = stream.read(struct.calcsize(PUP_ENTRY_FORMAT))
-            self.entries.append(
-                PUPEntry(*struct.unpack(PUP_ENTRY_FORMAT, entry_data))
-            )
+        self.read_entries(stream)
 
     def __str__(self):
         return str(self.header)
