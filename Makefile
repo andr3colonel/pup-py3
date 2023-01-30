@@ -14,7 +14,7 @@ flake8:
 	flake8 $(SRC)
 
 black:
-	black $(SRC)
+	black --line-length 79 $(SRC)
 
 isort:
 	isort $(SRC) --atomic

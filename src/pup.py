@@ -44,11 +44,10 @@ class PUPHeader:  # pylint: disable=too-many-instance-attributes
     def __str__(self):
         return f"""Magic: {hex(self.magic)}
 Flags: {hex(self.flags)}
-HeaderSize: {self.headerSize}
-HashSize: {self.hashSize}
-fileSize: {self.fileSize}
-entryCount: {self.entryCount}
-hashCount: {self.hashCount}
+HeaderSize: {self.header_size}
+HashSize: {self.hash_size}
+fileSize: {self.file_size}
+entryCount: {self.blobs_count}
 """
 
 
@@ -75,13 +74,17 @@ class PUP:
                 f"Data is too small to be a valid header {len(header_data)}",
                 PUPErrorType.INVALID_HEADER_SIZE,
             )
-        self.header = PUPHeader(*struct.unpack("<IBBBBBBHHHIIHHI", header_data))
+        self.header = PUPHeader(
+            *struct.unpack("<IBBBBBBHHHIIHHI", header_data)
+        )
         if self.header.magic != 0x1D3D154F:
             raise PUPParsingException(
                 f"Invalid Magic value: {hex(self.header.magic)}",
                 PUPErrorType.INVALID_MAGIC,
             )
-        if self.header.header_size > len(data) or self.header.file_size > len(data):
+        if self.header.header_size > len(data) or self.header.file_size > len(
+            data
+        ):
             raise PUPParsingException(
                 f"Invalid file size: {len(data)}",
                 PUPErrorType.INVALID_FILE_SIZE,
