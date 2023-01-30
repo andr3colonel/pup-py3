@@ -21,7 +21,7 @@ class PUPParsingException(Exception):
 
 
 @attr.s
-class PUPHeader:
+class PUPHeader:  # pylint: disable=too-many-instance-attributes
     magic: int = attr.ib()
     unk04: int = attr.ib()
     unk08: int = attr.ib()
@@ -48,10 +48,15 @@ class PUP:
 
     def parse(self, data: bytes):
         stream = io.BytesIO(data)
-        header_data = stream.read(4)
+        header_data = stream.read(32)
         if len(header_data) < 32:
             raise PUPParsingException(
-                "Data is too small to be a valid header",
+                f"Data is too small to be a valid header {len(header_data)}",
                 PUPErrorType.INVALID_HEADER_SIZE,
             )
         self.header = PUPHeader(*struct.unpack("<IIHBBHHQHHI", data))
+        if self.header.magic != 0x1D3D154F:
+            raise PUPParsingException(
+                f"Invalid Magic value: {hex(self.header.magic)}",
+                PUPErrorType.INVALID_MAGIC,
+            )
