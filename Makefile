@@ -19,6 +19,12 @@ black:
 isort:
 	isort $(SRC) --atomic
 
+test:
+	python -m coverage run --source=src -m pytest
+	python -m coverage report
+
+build: format lint test
+
 format: isort black
 lint: flake8 mypy pylint
 
