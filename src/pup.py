@@ -1,6 +1,7 @@
 import io
 import os.path
 import struct
+import zlib
 from enum import Enum
 from typing import List
 
@@ -215,12 +216,14 @@ File size: {hex(self.file_size)}
 Entries: {self.entries_count}
     """
 
+
 @attr.define
 class PUPEntry:  # pylint: disable=too-many-instance-attributes
     flags: int
     offset: int
     file_size: int
     memory_size: int
+    data: bytes = attr.field(init=False)
 
     @property
     def file_name(self) -> str:
@@ -234,6 +237,14 @@ class PUPEntry:  # pylint: disable=too-many-instance-attributes
     def blocked(self) -> bool:
         return self.flags & 0x800 != 0
 
+    def process_bytes(self, data):
+        if self.compressed:
+            decompress = zlib.decompressobj()
+            inflated = decompress.decompress(data)
+            inflated += decompress.flush()
+            self.data = inflated
+        else:
+            self.data = data
 
     def __str__(self):
         return f"""
@@ -280,6 +291,9 @@ class PUP:
             self.entries.append(
                 PUPEntry(*struct.unpack(PUP_ENTRY_FORMAT, entry_data))
             )
+        for entry in self.entries:
+            stream.seek(entry.offset, 0)
+            entry.process_bytes(stream.read(entry.file_size))
 
     def parse(self, data: bytes):
         stream = io.BytesIO(data)
