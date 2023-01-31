@@ -238,7 +238,7 @@ class PUPEntry:  # pylint: disable=too-many-instance-attributes
         return self.flags & 0x800 != 0
 
     def process_bytes(self, data):
-        if self.compressed:
+        if not self.blocked and self.compressed:
             decompress = zlib.decompressobj()
             inflated = decompress.decompress(data)
             inflated += decompress.flush()
